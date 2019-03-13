@@ -50,6 +50,22 @@ module.exports = class MockService {
   }
 
   /**
+   * @param {Interaction} interaction
+   * @returns {Promise}
+   */
+  addInteraction (interaction, consumer, provider) {
+    if(consumer){
+      this._pactDetails.consumer = { name: consumer };
+    }
+    if(provider){
+      this._pactDetails.provider = { name: provider };
+    }
+
+    const stringifiedInteraction = JSON.stringify(interaction.json())
+    this._request.send('POST', `${this._baseURL}/interactions`, stringifiedInteraction)
+  }
+
+  /**
    * Removes all interactions.
    * @returns {Promise}
    */

@@ -12,6 +12,7 @@ export class MockService {
     pactfileWriteMode?: PactfileWriteMode,
   );
   addInteraction(interaction: Interaction): Promise<string>;
+  addInteraction(interaction: Interaction, consumer?:string, provider?:string): void;
   removeInteractions(): Promise<string>;
   verify(): Promise<string>;
   writePact(): Promise<string>;

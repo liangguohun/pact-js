@@ -36,7 +36,7 @@ const path = require('path')
 module.exports = (opts) => {
   const consumer = opts.consumer
   const provider = opts.provider
-
+  
   if (isNil(consumer)) {
     throw new Error('You must specify a Consumer for this pact.')
   }
@@ -59,6 +59,7 @@ module.exports = (opts) => {
 
   const server = serviceFactory.createServer({
     port: port,
+    host: host,
     log: log,
     dir: dir,
     spec: spec,
@@ -68,11 +69,16 @@ module.exports = (opts) => {
     cors: cors
   })
   serviceFactory.logLevel(logLevel)
-
+  
   logger.info(`Setting up Pact with Consumer "${consumer}" and Provider "${provider}" using mock service on Port: "${port}"`)
 
   const mockService = new MockService(consumer, provider, port, host, ssl, pactfileWriteMode)
-
+  process.on('SIGINT', function () {//fix the ctrl+c to stop mockserver
+      port.write('Y', function (){
+          server.delete();
+          process.exit();
+      });
+  });
   /** @namespace PactProvider */
   return {
 
@@ -80,8 +86,7 @@ module.exports = (opts) => {
      * Start the Mock Server.
      * @returns {Promise}
      */
-    setup: () => net.isPortAvailable(port, host).then(() => server.start()),
-
+    setup: () => net.isPortAvailable(port, host).then(() => server.start() ).catch(e=>{}),
     /**
      * Add an interaction to the {@link MockService}.
      * @memberof PactProvider
@@ -103,7 +108,27 @@ module.exports = (opts) => {
 
       return mockService.addInteraction(interaction)
     },
+    /**
+     * Add an interaction to the {@link MockService}, point differ consumer or provider and when jest --watch  rebuild pact
+     * @memberof PactProvider
+     * @instance  
+     * @param {Interaction} interactionObj
+     * @returns {Promise}
+     */
+    addInteraction: (interactionObj, consumer, provider) => {
+      let interaction = new Interaction()
 
+      if (interactionObj.state) {
+        interaction.given(interactionObj.state)
+      }
+
+      interaction
+        .uponReceiving(interactionObj.uponReceiving)
+        .withRequest(interactionObj.withRequest)
+        .willRespondWith(interactionObj.willRespondWith)
+
+      mockService.addInteraction(interaction, consumer, provider)
+    },
     /**
      * Checks with the Mock Service if the expected interactions have been exercised.
      * @memberof PactProvider

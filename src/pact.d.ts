@@ -25,6 +25,7 @@ declare namespace pact {
   export interface PactProvider {
     setup(): Promise<void>;
     addInteraction(interactionObj: InteractionObject): Promise<string>;
+    addInteraction(interactionObj: InteractionObject, consumer?:string, provider?:string): void;
     verify(): Promise<void>;
     finalize(): Promise<void>;
     writePact(): Promise<string>;
