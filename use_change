@@ -1,0 +1,87 @@
+How to use the change
+
+
+const path = require('path')
+const pact = require('pact');
+import config from './config';
+
+global.provider = pact({
+  port: config.port,
+  log: path.resolve(process.cwd(), 'logs', 'pact.log'),
+  dir: path.resolve(process.cwd(), 'pacts'),
+  logLevel:'error',
+  spec: 2,
+  host:config.host,    //this  can define the real local ip that other people can‘t access the dev self
+  pactfileWriteMode: config.justMock?'none':'update',//the justMock i define true  and the mockserver will not stop when finished test
+  consumer: 'AppConsumer',
+  provider: 'AppProvider'
+})
+export const provider = global.provider
+
+# the package.json
+"test": "jest __tests__ --runInBand",
+
+# the test file
+
+'use strict'
+let fetch = require('node-fetch');
+import { provider } from '../pactSetup';
+import config from '../config';
+
+describe("getTest", () => {
+  beforeAll((done)=>{
+    return provider.setup()
+    .then(() => done()).catch(e=>{
+      console.log(e);
+    })
+  })
+
+  const EXPECTED_BODY = {
+      "message": {
+          "hell": "Los Angeles"
+      }
+  }
+
+  beforeEach(() => {
+    const interaction = {
+      state: 'getTest now!',
+      uponReceiving: 'a request for getTest',
+      withRequest: {
+        method: 'GET',
+        path: '/getTest'
+      },
+      willRespondWith: {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: EXPECTED_BODY
+      }
+    }
+    return provider.addInteraction(interaction, '/getTest', 'provider')
+  })
+
+  it('getUserInfo success return', (done) => {
+    let opt = { method: "GET" };
+    fetch(`http://${config.host+':'+config.port}/getTest`, opt).then(response => {
+      return response.json();
+    }).then(response => {
+      done();
+    }).catch((e) => {
+      done(e);
+    });
+  })
+
+
+  afterEach((done) => {
+    if(config.justMock){
+      done()
+    } else {
+      provider.writePact().then(()=>{
+        provider.finalize().then(() => done());
+      })
+    }
+  });
+
+
+})
